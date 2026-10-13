@@ -1,0 +1,19 @@
+mnist-production-pipeline/
+├── data/
+├── models/
+├── src/
+│   ├── __init__.py
+│   ├── train.py
+│   ├── model.py
+│   └── inference.py
+├── app/
+│   ├── __init__.py
+│   ├── main.py
+│   └── static/
+│       └── index.html
+├── tests/
+│   ├── __init__.py
+│   └── test_api.py
+├── Dockerfile
+├── requirements.txt
+└── README.md

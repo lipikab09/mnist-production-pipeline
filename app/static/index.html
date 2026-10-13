@@ -1,0 +1,179 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MNIST MLOps Inference UI</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #0f172a;
+            color: #f8fafc;
+            text-align: center;
+            margin: 0;
+            padding: 40px;
+        }
+        h1 { margin-bottom: 5px; color: #38bdf8; }
+        p { color: #94a3b8; margin-bottom: 30px; }
+        .container {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+        }
+        canvas {
+            border: 4px solid #38bdf8;
+            background-color: #000000;
+            border-radius: 12px;
+            cursor: crosshair;
+            box-shadow: 0 10px 25px rgba(56, 189, 248, 0.2);
+        }
+        .btn-group {
+            margin-top: 20px;
+        }
+        button {
+            padding: 12px 24px;
+            font-size: 16px;
+            font-weight: bold;
+            margin: 0 8px;
+            cursor: pointer;
+            border: none;
+            border-radius: 8px;
+            transition: all 0.2s ease;
+        }
+        .btn-predict {
+            background-color: #38bdf8;
+            color: #0f172a;
+        }
+        .btn-predict:hover {
+            background-color: #0ea5e9;
+        }
+        .btn-clear {
+            background-color: #ef4444;
+            color: #ffffff;
+        }
+        .btn-clear:hover {
+            background-color: #dc2626;
+        }
+        #result-box {
+            margin-top: 30px;
+            padding: 20px;
+            background-color: #1e293b;
+            border-radius: 12px;
+            min-width: 280px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+        }
+        .prediction-text {
+            font-size: 28px;
+            font-weight: bold;
+            color: #4ade80;
+            margin: 5px 0;
+        }
+        .confidence-text {
+            font-size: 16px;
+            color: #94a3b8;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="container">
+        <h1>MNIST Digit Recognition</h1>
+        <p>Draw a single digit (0–9) on the canvas below and test your ONNX model.</p>
+
+        <!-- Drawing Canvas -->
+        <canvas id="canvas" width="280" height="280"></canvas>
+
+        <div class="btn-group">
+            <button class="btn btn-predict" onclick="predictDigit()">Predict Digit</button>
+            <button class="btn btn-clear" onclick="clearCanvas()">Clear Canvas</button>
+        </div>
+
+        <!-- Result Display Box -->
+        <div id="result-box">
+            <div class="confidence-text">Prediction Result</div>
+            <div id="prediction" class="prediction-text">-</div>
+            <div id="confidence" class="confidence-text">Confidence: -</div>
+        </div>
+    </div>
+
+    <script>
+        const canvas = document.getElementById('canvas');
+        const ctx = canvas.getContext('2d');
+        let isDrawing = false;
+
+        // Initialize canvas background to black (MNIST standard)
+        ctx.fillStyle = "black";
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+        // Mouse Event Listeners
+        canvas.addEventListener('mousedown', startDrawing);
+        canvas.addEventListener('mouseup', stopDrawing);
+        canvas.addEventListener('mousemove', draw);
+
+        function startDrawing(e) {
+            isDrawing = true;
+            draw(e);
+        }
+
+        function stopDrawing() {
+            isDrawing = false;
+            ctx.beginPath();
+        }
+
+        function draw(e) {
+            if (!isDrawing) return;
+
+            ctx.lineWidth = 22; // Thick brush stroke for clear handwriting
+            ctx.lineCap = 'round';
+            ctx.strokeStyle = 'white'; // White strokes on black background
+
+            const rect = canvas.getBoundingClientRect();
+            const x = e.clientX - rect.left;
+            const y = e.clientY - rect.top;
+
+            ctx.lineTo(x, y);
+            ctx.stroke();
+            ctx.beginPath();
+            ctx.moveTo(x, y);
+        }
+
+        function clearCanvas() {
+            ctx.fillStyle = "black";
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            document.getElementById('prediction').innerText = "-";
+            document.getElementById('confidence').innerText = "Confidence: -";
+        }
+
+        async function predictDigit() {
+            // Convert canvas drawing into a PNG blob file
+            canvas.toBlob(async (blob) => {
+                const formData = new FormData();
+                formData.append("file", blob, "digit.png");
+
+                try {
+                    // Send file to your FastAPI backend endpoint
+                    const response = await fetch('/predict', {
+                        method: 'POST',
+                        body: formData
+                    });
+
+                    const data = await response.json();
+
+                    if (response.ok) {
+                        document.getElementById('prediction').innerText = `Digit: ${data.predicted_digit}`;
+                        document.getElementById('confidence').innerText = `Confidence: ${data.confidence}%`;
+                    } else {
+                        document.getElementById('prediction').innerText = "Error";
+                        document.getElementById('confidence').innerText = data.detail || "Prediction failed";
+                    }
+                } catch (err) {
+                    console.error("API Error:", err);
+                    document.getElementById('prediction').innerText = "Error";
+                    document.getElementById('confidence').innerText = "Could not reach server";
+                }
+            }, 'image/png');
+        }
+    </script>
+</body>
+</html>

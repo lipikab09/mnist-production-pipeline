@@ -1,0 +1,11 @@
+# Python virtual environment
+venv/
+__pycache__/
+*.pyc
+
+# PyTorch checkpoints (optional: keep if you want them on GitHub, ignore if too large)
+# models/mnist_cnn.pth
+
+# OS generated files
+.DS_Store
+Thumbs.db
